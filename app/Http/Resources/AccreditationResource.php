@@ -25,6 +25,18 @@ class AccreditationResource extends Resource
             'user_id' => $this->user_id,
             'certificate_file' => $this->certificate_file,
             'recommendation_file' => $this->recommendation_file,
+            'certificate_download_url' => $this->certificate_file
+            ? route(
+                'admin.certifications.download.certificate',
+                $this->id
+              )
+            : null,
+            'recommendation_download_url' => $this->recommendation_file
+            ? route(
+                'admin.certifications.download.recommendation',
+                $this->id
+              )
+            : null,
             'certificate_status' => $this->certificate_status,
             'certificate_sent_at' => $this->certificate_sent_at,
             'meeting_date' => $this->meeting_date,

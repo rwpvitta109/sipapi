@@ -195,6 +195,8 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('certifications', Admin\CertificationController::class, ['only' => ['index', 'show']]);
         Route::prefix('certifications')->name('certifications.')->group(function () {
           Route::post('/', [Admin\CertificationController::class, 'update'])->name('certification.update');
+          Route::get('{id}/download/certificate', [Admin\CertificationController::class, 'downloadCertificate'])->name('download.certificate');
+          Route::get('{id}/download/recommendation', [Admin\CertificationController::class, 'downloadRecommendation'])->name('download.recommendation');
         });
         
         Route::prefix('province_region')->name('province_region.')->group(function () {
@@ -303,7 +305,14 @@ Route::prefix('v1')->group(function () {
         Route::get('infographics', [Controllers\InfographicsController::class, 'index'])->name('infographics');
         Route::get('accreditations', [Controllers\AccreditationController::class, 'browseAccredited'])->name('accreditations.index');
         Route::get('accreditations/total_by_category', [Controllers\AccreditationController::class, 'totalByCategory'])->name('accreditations.total_by_category');
-    });
+        Route::apiResource('certifications', Admin\CertificationController::class, ['only' => ['index', 'show']]);
+
+          // Route::prefix('certifications')->name('certifications.')->group(function () {
+          //      Route::post('/', [Admin\CertificationController::class, 'update'])->name('certification.update');
+          //      Route::get('{id}/download/certificate', [Admin\CertificationController::class, 'downloadCertificate'])->name('download.certificate');
+          //      Route::get('{id}/download/recommendation', [Admin\CertificationController::class, 'downloadRecommendation'])->name('download.recommendation');
+          // });
+     });
 
     Route::prefix('storage_files')->name('storage.')->group(function () {
         Route::get('accreditations/{path}', [Controllers\StorageController::class, 'showAccreditationFile'])

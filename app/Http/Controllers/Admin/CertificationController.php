@@ -10,6 +10,7 @@ use App\Notifications\CertificationSent;
 use App\Notifications\CertificationSigned;
 use App\Notifications\CertificationPrinted;
 use Illuminate\Http\Request;
+use Storage;
 
 class CertificationController extends Controller
 {
@@ -21,25 +22,38 @@ class CertificationController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
+        $search = $request->query('search');
+        $perPage = 10;
 
-        if ($user->isAssessee()){
-            $accreditations = Accreditation::with(['institution', 'evaluation'])->where('user_id', $user->id)->accredited()->get();
+        $query = Accreditation::with(['institution', 'evaluation'])
+            ->accredited();
+
+        if ($user->isAssessee()) {
+            $query->where('user_id', $user->id);
+        } elseif ($user->isProvince()) {
+            $query->whereHas('institution', function ($q) use ($user) {
+                $q->where('province_id', $user->province_id);
+            });
+        } elseif (!($user->isSuperAdmin() || $user->isCertificateAdmin())) {
+            $query->whereHas('institution', function ($q) use ($user) {
+                $q->where('region_id', $user->region_id);
+            });
         }
-        else if($user->isSuperAdmin() || $user->isCertificateAdmin()){
-            $accreditations = Accreditation::with(['institution', 'evaluation'])->accredited()->get();
-        }
-        else if($user->isProvince()){
-            $accreditations = Accreditation::with(['institution', 'evaluation'])->whereHas('institution', function($q) use ($user){
-                $q->where('province_id', '=', $user["province_id"]);
-            })->accredited()->get();        
-        }
-        else {
-            $accreditations = Accreditation::with(['institution', 'evaluation'])->whereHas('institution', function($q) use ($user){
-                $q->where('region_id', '=', $user["region_id"]);
-            })->accredited()->get();
+        if ($search !== null && trim($search) !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('code', 'like', "%{$search}%")
+                ->orWhere('predicate', 'like', "%{$search}%")
+                ->orWhereHas('institution', function ($qi) use ($search) {
+                    $qi->where('agency_name', 'like', "%{$search}%")
+                        ->orWhere('library_name', 'like', "%{$search}%");
+                });
+            });
         }
 
-        return $accreditations;
+        // return $query->paginate($perPage);
+        return AccreditationResource::collection(
+            $query->paginate($perPage)
+        );
     }
 
     public function show($accreditationId)
@@ -108,4 +122,39 @@ class CertificationController extends Controller
 
         return new AccreditationResource($accreditation);
     }
+
+    public function downloadCertificate($id)
+    {
+        $certification = Accreditation::findOrFail($id);
+
+        if (!$certification->certificate_file) {
+            abort(404);
+        }
+
+        if (!Storage::disk('local')->exists($certification->certificate_file)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->download(
+            $certification->certificate_file
+        );
+    }
+
+    public function downloadRecommendation($id)
+    {
+        $certification = Accreditation::findOrFail($id);
+
+        if (!$certification->recommendation_file) {
+            abort(404);
+        }
+
+        if (!Storage::disk('local')->exists($certification->recommendation_file)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->download(
+            $certification->recommendation_file
+        );
+    }
+
 }
